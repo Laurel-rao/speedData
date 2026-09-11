@@ -4,7 +4,8 @@
 .ft-jobs.json
 dist/*.sha256
 
-# Local build outputs
+# Local build outputs and release staging files
+dist/
 filetransfer
 filetransfer.exe
 filetransfer-arm64.exe
@@ -12,4 +13,3 @@ filetransfer-arm64.exe
 # IDE files
 .idea/
 .vscode/
-
