@@ -1,0 +1,1006 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>FileTransfer</title>
+<style>
+:root{--bg:#0e1117;--card:#171b24;--line:#262c38;--line2:#333b4b;--txt:#e7ebf2;--mut:#8b93a5;
+--acc:#4c8dff;--acc2:#6ea8ff;--ok:#3ecf6e;--err:#ff5c5c;--warn:#ffb340;--r:12px}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;font:14px/1.55 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif;background:var(--bg);color:var(--txt)}
+.wrap{max-width:700px;margin:0 auto;padding:14px 14px 30px}
+h1{font-size:19px;margin:0 0 2px;letter-spacing:.2px}
+.sub{color:var(--mut);font-size:12px;margin:0 0 12px}
+.tabs{display:flex;gap:8px;margin-bottom:12px}
+.tabs button{flex:1;background:#20242f;border:1px solid var(--line);color:var(--mut);padding:11px 4px;border-radius:10px;font-size:15px;cursor:pointer;transition:background .15s,color .15s}
+.tabs button:active{transform:scale(.98)}
+.tabs button.on{background:var(--acc);color:#fff;border-color:var(--acc);font-weight:600}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:14px;margin-bottom:12px}
+.cardhead{display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap}
+.cardhead b{font-size:14px}
+.cardhead .acts{margin-left:auto;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.cardhead .acts a, .cardhead a{color:var(--acc);font-size:12px;cursor:pointer}
+label{display:block;font-size:12px;color:var(--mut);margin-top:8px}
+input,select{width:100%;padding:10px;background:#11141b;border:1px solid var(--line);border-radius:8px;color:var(--txt);margin:4px 0 8px;font-size:14px}
+input:focus,select:focus{outline:none;border-color:var(--acc)}
+input::placeholder{color:#5b6374}
+button{width:100%;padding:12px;background:var(--acc);border:0;border-radius:9px;color:#fff;font-size:15px;margin-top:4px;cursor:pointer;transition:filter .12s}
+button:hover{filter:brightness(1.08)}
+button:active{transform:scale(.99)}
+button:disabled{opacity:.45;cursor:not-allowed;transform:none!important}
+button.ghost{background:#232834;color:var(--txt);font-size:13px;padding:10px}
+button.mini{width:auto;padding:10px 14px;margin:0 0 0 8px;background:#232834;font-size:13px;color:var(--txt)}
+button.tiny{width:auto;padding:4px 9px;margin:0 0 0 6px;background:#232834;font-size:12px;color:var(--txt);border-radius:7px}
+button.tiny.danger{background:#3a1418;color:var(--err)}
+button.tiny.cp{background:transparent;padding:2px 6px;font-size:11px;border:1px solid var(--line2)}
+.row2{display:flex;align-items:center}.row2 input{flex:1;margin:4px 0 8px}
+.pick-actions{display:flex;gap:8px;margin:4px 0 8px}.pick-actions button{flex:1;min-width:0;margin:0}
+.mut{color:var(--mut);font-size:12px}
+.flex{flex:1}
+.hide{display:none!important}
+.chk{display:flex;align-items:flex-start;gap:8px;padding:6px 0;font-size:12px;color:var(--mut)}
+.chk input{width:auto;margin:2px 0 0}
+/* ---- 概览 / 统计 ---- */
+.ovpct{font-size:13px;color:var(--mut);display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;flex-wrap:wrap;gap:4px}
+.ovpct b{color:var(--txt);font-size:15px}
+.bigbar{height:10px;background:#11141b;border:1px solid var(--line);border-radius:5px;overflow:hidden}
+.bigbar i{display:block;height:100%;background:linear-gradient(90deg,var(--acc),var(--acc2));width:0;transition:width .4s ease}
+.prepare-path,.prepare-note{overflow-wrap:anywhere;word-break:break-word}
+.prepare-path{margin:10px 0 4px;font-size:12px;color:var(--txt)}
+.prepare-note{margin:6px 0 0;color:var(--mut);font-size:12px}
+.prepare-error{color:var(--err)}
+.bigbar.pending i{width:32%!important;animation:prepare-wait 1.4s ease-in-out infinite alternate}
+@keyframes prepare-wait{to{transform:translateX(210%)}}
+@media(prefers-reduced-motion:reduce){.bigbar.pending i{animation:none}}
+.stats{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.stat{flex:1;min-width:84px;background:#11141b;border:1px solid var(--line);border-radius:9px;padding:8px 10px}
+.stat b{display:block;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stat span{color:var(--mut);font-size:11px}
+.sparkbox{margin-top:10px;background:#11141b;border:1px solid var(--line);border-radius:9px;padding:6px 8px}
+.sparkbox .cap{color:var(--mut);font-size:11px;margin-bottom:2px}
+.spark{display:block;width:100%;height:36px}
+.spark .spl{fill:none;stroke:var(--acc);stroke-width:1.6;stroke-linejoin:round;vector-effect:non-scaling-stroke}
+.spark .spa{fill:var(--acc);opacity:.14}
+/* ---- 徽章 ---- */
+.bd{font-size:11px;padding:2px 7px;border-radius:7px;white-space:nowrap;display:inline-block;vertical-align:middle}
+.bd.ok{background:#0f3a1f;color:var(--ok)}
+.bd.run{background:#1f3a5f;color:var(--acc2)}
+.bd.wait{background:#242a36;color:var(--mut)}
+.bd.err{background:#3a1010;color:var(--err)}
+.bd.pause{background:#3a2f10;color:var(--warn)}
+/* ---- 列表行 ---- */
+.frow{padding:8px 0 6px;border-bottom:1px dashed #232935}
+.frow:last-child{border-bottom:0}
+.fline{display:flex;align-items:center;gap:6px;min-width:0}
+.fname{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;cursor:default}
+.fname:hover{color:var(--acc2)}
+.fbar{height:5px;background:#11141b;border-radius:3px;overflow:hidden;margin-top:5px}
+.fbar i{display:block;height:100%;background:var(--acc);width:0;transition:width .35s ease}
+.fbar i.ferr{background:var(--err)}
+.fmeta{color:var(--mut);font-size:11px;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fdetail{color:var(--mut);font-size:11px;margin-top:3px;overflow-wrap:anywhere;word-break:break-word}
+.fdetail.wait{color:var(--warn)}
+.fdetail.err{color:var(--err);background:#2a0f0f;border-radius:5px;padding:2px 5px}
+.fmeta.ferr{color:var(--err)}
+.fbtns{display:flex;align-items:center;flex-shrink:0}
+.grphd{display:flex;align-items:center;gap:6px;padding:6px 2px;cursor:pointer;border-bottom:1px solid var(--line);color:var(--txt);user-select:none}
+.grphd:hover{background:#1c202b}
+.grphd .garr{color:var(--mut);font-size:11px;width:12px}
+.grphd b{font-size:13px}
+.grphd .gcnt{color:var(--mut);font-size:11px;margin-left:auto}
+/* ---- 文件夹 / 树 ---- */
+.trow{display:flex;align-items:center;gap:6px;padding:4px 0;border-bottom:1px dashed #20242f;min-width:0}
+.trow:last-child{border-bottom:0}
+.tname{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12.5px}
+.selection-info{flex:1;min-width:0}.selection-info .tname{display:block}
+.selection-path{display:block;color:var(--mut);font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tsize{color:var(--mut);font-size:11px;white-space:nowrap}
+.tbz{flex-shrink:0}
+/* ---- 连接卡 / 地址 ---- */
+.connbox{background:#11141b;border:1px solid var(--line);border-radius:9px;padding:10px 12px;margin:8px 0;word-break:break-all;font-family:ui-monospace,Consolas,monospace;font-size:13px}
+.cprow{display:flex;align-items:stretch;gap:8px}
+.cprow .connbox{flex:1;margin:0}
+.cprow button.tiny{margin:0;align-self:center;flex-shrink:0;padding:6px 10px}
+/* ---- banner / toast ---- */
+.banner{display:flex;align-items:center;gap:8px;padding:9px 12px;border-radius:9px;font-size:13px;margin:0 0 12px;flex-wrap:wrap}
+.banner.err{background:#3a1010;color:var(--err);border:1px solid #5a2328}
+.banner.ok{background:#0f3a1f;color:var(--ok);border:1px solid #1d5c33}
+.banner.info{background:#1f3a5f;color:var(--acc2);border:1px solid #2e4f80}
+.banner .acts{margin-left:auto;color:var(--acc);font-size:12px;cursor:pointer}
+#toasts{position:fixed;top:12px;right:12px;z-index:99;display:flex;flex-direction:column;gap:8px;max-width:min(320px,80vw)}
+.toast{background:#20242f;border:1px solid var(--line2);border-left:3px solid var(--acc);color:var(--txt);border-radius:9px;padding:10px 14px;font-size:13px;box-shadow:0 6px 20px rgba(0,0,0,.4);animation:tin .18s ease}
+.toast.ok{border-left-color:var(--ok)}
+.toast.err{border-left-color:var(--err)}
+.toast.out{opacity:0;transition:opacity .3s}
+@keyframes tin{from{transform:translateY(-6px);opacity:0}to{transform:none;opacity:1}}
+/* ---- 日志 ---- */
+.log{font-family:ui-monospace,Consolas,monospace;font-size:11px;color:var(--mut);max-height:240px;overflow:auto;margin-top:6px;white-space:pre-wrap;word-break:break-all}
+.ll{padding:4px 6px;border-radius:6px;margin-bottom:2px;white-space:normal}
+.ll.ok{color:var(--ok)}
+.ll.err{color:var(--err);background:#2a0f0f}
+.ll .lt{color:var(--mut)}
+/* ---- 其他 ---- */
+.foot{color:var(--mut);font-size:11px;text-align:center;padding:10px 0 20px}
+select.filter{width:auto;padding:4px 8px;font-size:12px;margin:0;background:#20242f;border-color:var(--line)}
+@media (max-width:600px){
+  .stat{min-width:42%}
+  .cprow{flex-direction:column}
+  .cprow button.tiny{align-self:flex-end}
+  .cardhead .acts{margin-left:0;width:100%}
+  .row2{flex-wrap:wrap}
+  .row2 button.mini{margin:0 0 8px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>FileTransfer</h1>
+  <p class="sub">局域网传文件 · 实时进度 · 手机端可用</p>
+</header>
+
+<div class="card" id="adminPanel">
+  <div class="cardhead"><b>本机管理验证</b></div>
+  <p class="mut">服务仍监听全部网卡。管理密码用于操作这台电脑，与发送文件时使用的接收密码不同。管理密码不会随程序重启改变，请勿分享给发送方。</p>
+  <label for="adminKey">本机管理密码</label>
+  <input id="adminKey" type="password" autocomplete="off" placeholder="输入本机管理密码">
+  <button id="btnAdmin" onclick="unlockAdmin()">验证并进入</button>
+  <p class="mut" id="adminMsg"></p>
+</div>
+
+<div id="workspace" class="hide">
+
+<div class="tabs">
+<button id="tabRecv" class="on" onclick="show('recv')">📥 接收</button>
+<button id="tabSend" onclick="show('send')">📤 发送</button>
+<button id="tabMon" onclick="show('mon')">👁 查看进度</button>
+</div>
+<div id="toasts"></div>
+
+<!-- ================= 接收（设目录+密码，等发送方推来） ================= -->
+<div id="recvWrap">
+  <div class="card" id="recvCfg">
+    <div class="cardhead"><b>接收服务器设置</b></div>
+    <p class="mut">接收端作为服务器，设置存储目录和接收密码后等待上传。发送端只需能访问此服务器；服务器不会回连发送端。把「接收地址 + 密码」发给对方即可。</p>
+    <label>存储目录（收到的文件放这里）</label>
+    <div class="row2"><input id="recvDest" placeholder="留空则存到 ./received"><button class="mini" data-picker onclick="pick('recvDest')">选择…</button></div>
+    <label>接收密码（发给发送方）</label><input id="recvPw" type="password" placeholder="对方发送时输入的密码">
+    <label>同名文件</label>
+    <select id="recvPolicy">
+      <option value="rename">自动重命名（推荐，不覆盖原文件）</option>
+      <option value="skip">跳过已存在</option>
+      <option value="overwrite">覆盖</option>
+    </select>
+    <button id="btnRecvSave" onclick="startRecv()">保存并开始接收</button>
+    <p class="mut" id="recvMsg"></p>
+  </div>
+
+  <div id="recvMain" class="hide">
+    <div class="card">
+      <div class="cardhead"><b>发给发送方（对方在「发送文件」里填写）</b>
+        <span class="acts"><a onclick="reopenRecvCfg()">重新配置</a></span></div>
+      <div class="cprow">
+        <div class="connbox" id="recvUrl"></div>
+        <button class="tiny" onclick="copyText(document.getElementById('recvUrl').textContent,'接收地址已复制')">📋 复制地址</button>
+      </div>
+      <div class="cprow" style="margin-top:6px">
+        <div class="connbox" id="recvPwShow"></div>
+        <button class="tiny" onclick="copyText(document.getElementById('recvPwShow').textContent,'密码已复制')">📋 复制密码</button>
+      </div>
+      <button id="copyConn" onclick="copyConn()" style="padding:9px">📋 复制地址+密码（发一段给发送方粘贴即可）</button>
+      <p class="mut" id="recvHint"></p>
+    </div>
+    <p class="banner info hide" id="recvArchiveBanner"></p>
+    <div class="card" id="recvOverview"></div>
+    <div class="card">
+      <div class="cardhead">
+        <b>接收进度</b>
+        <span class="acts">
+          <a onclick="ctl('pause','')">全部暂停</a> · <a onclick="ctl('resume','')">全部继续</a> · <a onclick="ctl('cancel','')">全部取消</a>
+        </span>
+      </div>
+      <div id="recvFiles"></div>
+      <p class="mut" id="recvEmpty" style="padding:8px 0">等待对方发送…</p>
+      <p class="banner err hide" id="recvOffline">⚠ 与对方连接中断，正在重试…</p>
+    </div>
+    <div class="card">
+      <div class="cardhead">
+        <b>工具与传输记录</b>
+        <span class="acts">
+          <a onclick="openFolder()">打开存储目录</a> · <a onclick="cleanCache()">清理临时文件</a> · <a onclick="loadLog()">刷新记录</a>
+          <select class="filter" id="logFilter" onchange="renderLog()">
+            <option value="all">全部</option><option value="ok">只看成功</option><option value="err">只看失败</option>
+          </select>
+        </span>
+      </div>
+      <div id="recvLog" class="log"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= 发送（推送到接收方） ================= -->
+<div id="sendWrap" class="hide">
+  <section id="sendPreparation" class="card hide" aria-label="发送准备进度">
+    <div class="cardhead"><b id="prepareTitle">发送准备</b><span id="prepareStage" class="bd run" role="status"></span></div>
+    <div class="ovpct"><span id="prepareDetail"></span><b id="preparePercent"></b></div>
+    <div id="prepareBar" class="bigbar" role="progressbar" aria-label="当前准备阶段进度" aria-valuemin="0" aria-valuemax="100"><i></i></div>
+    <div class="stats">
+      <div class="stat"><b id="prepareFiles">—</b><span id="prepareFilesLabel">已压缩 / 总文件数</span></div>
+      <div class="stat"><b id="prepareBytes">—</b><span id="prepareBytesLabel">已处理 / 原始大小</span></div>
+      <div class="stat"><b id="prepareElapsed">0 秒</b><span>准备耗时</span></div>
+    </div>
+    <p id="prepareCurrent" class="prepare-path"></p>
+    <p id="prepareNote" class="prepare-note"></p>
+    <p id="preparePollError" class="prepare-note prepare-error" role="status"></p>
+  </section>
+  <div class="card" id="sendCfg">
+    <div class="cardhead"><b>发送设置</b></div>
+    <p class="mut">填接收服务器的地址和接收密码，文件由本机主动上传。只需本机能访问接收服务器，不要求接收服务器能访问本机。双方需使用 v2 版本。</p>
+    <div class="row2"><input id="sendPaste" placeholder="📎 粘贴对方发来的地址+密码，自动识别"><button class="mini" onclick="parsePaste()">识别</button></div>
+    <label>接收方地址</label><input id="sendUrl" placeholder="http://对方IP:8600">
+    <label>接收方密码</label><input id="sendPw" type="password" placeholder="对方在「接收文件」里设置的密码">
+    <label>要发送的文件或文件夹（可混合添加多个）</label>
+    <div id="sendFolders"></div>
+    <div class="row2"><input id="sendFolder" placeholder="输入一个文件或文件夹路径"><button class="mini" onclick="addFolderMan()">添加</button></div>
+    <div class="pick-actions">
+      <button class="ghost" data-picker onclick="pickSend('folder')">🗂 选择文件夹…</button>
+      <button class="ghost" data-picker onclick="pickSend('file')">📄 选择文件…</button>
+    </div>
+    <div class="chk"><input class="ck" type="checkbox" id="compressOn" checked><span>📦 压缩传输（推荐：打包成 zip 传输，接收端自动解压；取消勾选则逐个文件传）</span></div>
+    <button id="btnPush" onclick="startPush()">📤 发送到对方</button>
+    <button class="ghost" onclick="testPush()">🧪 测试连接（先发个小文件试试）</button>
+    <p class="mut" id="sendMsg"></p>
+  </div>
+
+  <div id="sendMain" class="hide">
+    <div class="card" id="sendBanner"></div>
+    <p class="banner err hide" id="sendOffline">⚠ 与接收方连接中断，正在重试…</p>
+    <div class="card" id="sendOverview"></div>
+    <div class="card">
+      <div class="cardhead"><b>传输中</b><span class="mut" id="sendActCnt"></span></div>
+      <div id="sendActive"></div>
+      <p class="mut" id="sendIdle" style="padding:8px 0">暂无传输</p>
+    </div>
+    <div class="card">
+      <div class="cardhead"><b>涉及文件</b><span class="mut" id="sendFcnt"></span></div>
+      <div id="sendTree"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= 查看进度 ================= -->
+<div id="monWrap" class="hide">
+  <div class="card" id="monCfg">
+    <div class="cardhead"><b>查看对方进度</b></div>
+    <p class="mut">自动复用发送页的接收地址和密码，只读查看进度。未填写发送配置时，也可在这里手动输入。</p>
+    <label>对方网址</label><input id="monUrl" placeholder="http://192.168.x.x:8600">
+    <label>密码</label><input id="monPw" type="password" placeholder="对方设置的密码">
+    <button id="btnMonitor" onclick="monitor()">查看进度</button>
+    <p class="mut" id="monMsg"></p>
+  </div>
+  <div id="monMain" class="hide">
+    <div class="card">
+      <div class="cardhead"><b>正在查看</b><span class="mut" id="monName"></span><button class="tiny" onclick="editMonitor()">更改连接</button></div>
+      <div class="connbox" id="monTargetUrl"></div>
+    </div>
+    <p class="banner err hide" id="monOffline">⚠ 读取对方进度失败，正在重试…</p>
+    <p class="banner info hide" id="monArchiveBanner"></p>
+    <div class="card" id="monOverview"></div>
+    <div class="card">
+      <div class="cardhead"><b>传输明细</b><span class="mut" id="monCnt"></span></div>
+      <div id="monFiles"></div>
+      <p class="mut" id="monIdle" style="padding:8px 0">暂无传输</p>
+    </div>
+    <div class="card" id="monTreeCard">
+      <div class="cardhead"><b>共享文件</b><span class="mut" id="monFcnt"></span></div>
+      <div id="monTree"></div>
+    </div>
+  </div>
+</div>
+
+</div>
+<div class="foot" id="foot"></div>
+</div>
+
+<script>
+'use strict';
+/* ================= 通用工具 ================= */
+const $ = id => document.getElementById(id);
+let ADMIN_KEY=sessionStorage.getItem('ft_admin')||'';
+const adminFragment=new URLSearchParams(location.hash.slice(1));
+if(adminFragment.has('admin')){ ADMIN_KEY=adminFragment.get('admin')||''; history.replaceState(null,'',location.pathname+location.search); }
+function lockAdmin(message){
+  $('adminPanel').className='card'; $('workspace').className='hide';
+  $('adminMsg').textContent=message||'请输入本机管理密码。';
+  for(const name of Object.keys(POLL)) pollStop(name);
+}
+async function managedFetch(path,options){
+  const config=options||{};
+  const response=await fetch(path,{...config,headers:{...config.headers,'X-FT-Admin':ADMIN_KEY}});
+  if(response.status===401 && !path.startsWith('/api/session')){ lockAdmin('管理验证失效，请重新输入管理密码。'); throw new Error('管理验证失效'); }
+  return response;
+}
+async function unlockAdmin(){
+  const button=$('btnAdmin'); button.disabled=true;
+  ADMIN_KEY=$('adminKey').value.trim();
+  try{ await initApp(); }catch(error){ $('adminMsg').textContent=error.message||'无法连接本机服务'; }finally{ button.disabled=false; }
+}
+const esc = s => String(s==null?'':s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function fmt(n){ if(n==null||!isFinite(n)) return '-'; const u=['B','KB','MB','GB','TB']; let i=0; while(n>=1024&&i<u.length-1){n/=1024;i++} return (n>=100||i===0?Math.round(n):n.toFixed(1))+' '+u[i]; }
+function fmtDur(sec){ if(sec==null||!isFinite(sec)||sec<=0) return '—'; sec=Math.round(sec); if(sec<60) return sec+' 秒'; const m=Math.floor(sec/60),s=sec%60; if(m<60) return m+' 分 '+(s? s+' 秒':''); const h=Math.floor(m/60); return h+' 小时 '+(m%60)+' 分'; }
+function pct(done,total){ return total>0? Math.min(100,done/total*100) : 0; }
+function msg(id,t){ $(id).textContent=t; }
+function toast(msg,type){ const t=document.createElement('div'); t.className='toast '+(type||'info'); t.textContent=msg; $('toasts').appendChild(t); setTimeout(()=>{t.classList.add('out'); setTimeout(()=>t.remove(),320)},3400); }
+async function copyText(v,label){
+  try{ if(navigator.clipboard && window.isSecureContext){ await navigator.clipboard.writeText(v); toast(label||'已复制','ok'); return; } }catch(e){}
+  try{ const ta=document.createElement('textarea'); ta.value=v; ta.style.position='fixed'; ta.style.opacity='0'; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); toast(label||'已复制','ok'); }catch(e){ toast('复制失败，请手动选择','err'); }
+}
+async function post(p,b){
+  const r = await managedFetch('/api/'+p,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b||{})});
+  return r.json();
+}
+
+/* 轮询：页面隐藏时暂停，恢复后立即补一次 */
+const POLL={};
+function pollStart(name,fn,ms){
+  if(POLL[name]) return;
+  let running=false;
+  const tick=async()=>{ if(document.hidden||running) return; running=true; try{ await fn(); }catch(e){}finally{ running=false; } };
+  POLL[name]={iv:setInterval(tick,ms), tick};
+  if(!window.__visBound){ window.__visBound=1;
+    document.addEventListener('visibilitychange',()=>{ if(!document.hidden) for(const k in POLL) POLL[k].tick(); });
+  }
+  tick();
+}
+function pollStop(name){ const p=POLL[name]; if(p){ clearInterval(p.iv); delete POLL[name]; } }
+
+/* 差量渲染：按 key 创建/更新/删除，不动其它行（防闪烁、保滚动） */
+function diffList(container,items,keyFn,build,update,els){
+  const seen=new Set();
+  items.forEach((it,i)=>{
+    const k=keyFn(it); seen.add(k);
+    let el=els.get(k);
+    if(!el){ el=build(it); el.__k=k; els.set(k,el); }
+    update(el,it);
+    const cur=container.children[i];
+    if(cur!==el) container.insertBefore(el,cur||null);
+  });
+  for(let i=container.children.length-1;i>=0;i--){ const el=container.children[i]; if(!seen.has(el.__k)){ els.delete(el.__k); el.remove(); } }
+}
+
+/* 状态与分组语义 */
+const STATS={pending:{zh:'排队',cls:'wait'},active:{zh:'传输中',cls:'run'},verifying:{zh:'校验中',cls:'run'},
+  extracting:{zh:'解压中',cls:'run'},
+  finalizing:{zh:'收尾',cls:'run'},paused:{zh:'已暂停',cls:'pause'},error:{zh:'出错',cls:'err'},
+  canceled:{zh:'已取消',cls:'wait'},done:{zh:'已完成',cls:'ok'}};
+function badge(st){ const s=STATS[st]||{zh:st||'?',cls:'wait'}; return '<i class="bd '+s.cls+'">'+esc(s.zh)+'</i>'; }
+const GROUPS=[
+  {key:'run',zh:'传输中',m:s=>s==='active'||s==='verifying'||s==='finalizing'||s==='extracting'},
+  {key:'pending',zh:'排队中',m:s=>s==='pending'},
+  {key:'paused',zh:'已暂停',m:s=>s==='paused'},
+  {key:'err',zh:'出错',m:s=>s==='error'},
+  {key:'canceled',zh:'已取消',m:s=>s==='canceled'},
+  {key:'done',zh:'已完成',m:s=>s==='done'}];
+const GOPEN={done:true}; // 已完成默认折叠
+function treeOf(path){ const p=String(path).split('/'); return {root:p[0]||'',name:p[p.length-1]||path,depth:Math.max(0,p.length-2)}; }
+
+/* 速度历史（60 点 sparkline）与单文件 ETA */
+const HIST={recv:[],send:[],mon:[]};
+const FILE_SPD={};
+function pushSpeed(k,v){ const a=HIST[k]; a.push(isFinite(v)&&v>=0?v:0); if(a.length>60) a.shift(); }
+function sparkHTML(k){
+  const a=HIST[k]; if(a.length<2) return '';
+  const w=240,h=36,mx=Math.max.apply(null,a),mn=Math.min.apply(null,a),span=mx-mn||1,d=a.length-1;
+  let pts='';
+  a.forEach((v,i)=>{ const x=i/d*w, y=h-4-(v-mn)/span*(h-10); pts+=(i?'L':'M')+x.toFixed(1)+' '+y.toFixed(1); });
+  return '<div class="sparkbox"><div class="cap">速度趋势（最近 '+a.length+' 秒）</div><svg class="spark" viewBox="0 0 '+w+' '+h+'" preserveAspectRatio="none"><path class="spa" d="'+pts+'L'+w+' '+h+'L0 '+h+'Z"/><path class="spl" d="'+pts+'"/></svg></div>';
+}
+function fileEta(path,size,done){
+  if(size<=done) return null;
+  const now=Date.now(); let a=FILE_SPD[path]; if(!a){ a=[]; FILE_SPD[path]=a; }
+  a.push({t:now,d:done}); while(a.length>6) a.shift();
+  if(a.length<2) return null;
+  const dt=(a[a.length-1].t-a[0].t)/1000; if(dt<0.6) return null;
+  const spd=(a[a.length-1].d-a[0].d)/dt; if(spd<=0) return null;
+  return (size-done)/spd;
+}
+
+/* 概览卡（结论前置：总进度 + 关键指标 + 速度趋势） */
+function overview(opt){
+  return '<div class="ovpct"><span>总进度 <b>'+opt.pct.toFixed(1)+'%</b></span><span>'+esc(opt.doneText)+'</span></div>'+
+    '<div class="bigbar"><i style="width:'+opt.pct.toFixed(1)+'%"></i></div>'+
+    '<div class="stats">'+opt.stats.map(s=>'<div class="stat"><b>'+esc(s.v)+'</b><span>'+esc(s.l)+'</span></div>').join('')+'</div>'+
+    (opt.hist? sparkHTML(opt.hist) : '');
+}
+
+/* 列表行（接收/监控共用） */
+function buildRow(){
+  const d=document.createElement('div'); d.className='frow';
+  d.innerHTML='<div class="fline"><span class="fname"></span><button class="tiny cp" title="复制路径">⧉</button><i class="flex"></i><span class="fbtns"></span></div>'+
+    '<div class="fbar"><i></i></div><div class="fmeta"></div><div class="fdetail" role="status"></div>';
+  return d;
+}
+function updRow(el,o){
+  const f=o.f, t=treeOf(f.path);
+  el.setAttribute('data-path',f.path);
+  el.setAttribute('data-control-path',f.id||f.path);
+  const nm=el.querySelector('.fname'); nm.textContent=t.name; nm.title=f.path; nm.style.paddingLeft=(t.depth*16)+'px';
+  const bar=el.querySelector('.fbar i'); bar.style.width=pct(f.bytes_done,f.size).toFixed(1)+'%'; bar.classList.toggle('ferr',f.status==='error');
+  const meta=el.querySelector('.fmeta');
+  let txt=fmt(f.bytes_done)+' / '+fmt(f.size);
+  const phases={waiting_for_chunks:'等待分块',uploading_chunks:'上传分块',verifying_file:'校验文件',finalizing_file:'完成文件',completed:'已完成',failed:'失败'};
+  if(f.phase) txt+=' · '+(phases[f.phase]||f.phase);
+  if(Number.isFinite(f.done_chunks)&&Number.isFinite(f.chunks)&&f.chunks>0) txt+=' · 分块 '+f.done_chunks+'/'+f.chunks;
+  if(o.eta!=null) txt+=' · 剩余 '+fmtDur(o.eta);
+  if(f.retries) txt+=' · 重试 '+f.retries;
+  if(f.missing_chunks!=null) txt+=' · 缺失 '+f.missing_chunks;
+  meta.textContent=txt; meta.title=txt;
+  const detail=el.querySelector('.fdetail');
+  const waitReason=f.wait_reason||f.waiting_reason||f.reason||'';
+  const retryCount=Number.isFinite(f.retry_count)?f.retry_count:(Number.isFinite(f.retries)?f.retries:0);
+  const errorDetail=f.error||f.last_error||f.error_detail||'';
+  const detailParts=[];
+  if(waitReason && (f.status==='pending'||f.phase==='waiting_for_chunks')) detailParts.push('等待原因：'+waitReason);
+  if(retryCount>0) detailParts.push('重试 '+retryCount+' 次');
+  if(errorDetail) detailParts.push('错误：'+errorDetail);
+  detail.textContent=detailParts.join(' · ');
+  detail.className='fdetail'+(errorDetail?' err':waitReason?' wait':'');
+  detail.title=detail.textContent;
+  el.querySelector('.fbtns').innerHTML=o.btns||'';
+}
+function ctlBtns(f){
+  if(f.status==='paused') return '<button class="tiny" data-act="resume">继续</button>';
+  if(f.status==='error'||f.status==='canceled') return '<button class="tiny" data-act="resume">重试</button>';
+  if(f.status==='pending'||f.status==='active') return '<button class="tiny" data-act="pause">暂停</button><button class="tiny danger" data-act="cancel">取消</button>';
+  if(f.status==='verifying'||f.status==='finalizing'||f.status==='extracting') return '<button class="tiny danger" data-act="cancel">取消</button>';
+  return '';
+}
+function buildHdr(it,render){
+  const d=document.createElement('div'); d.className='grphd';
+  d.innerHTML='<span class="garr">▾</span><b></b><span class="gcnt"></span>';
+  d.addEventListener('click',()=>{ GOPEN[it.g.key]=!GOPEN[it.g.key]; (render||renderRecvFiles)(); });
+  return d;
+}
+function updHdr(el,it){
+  el.querySelector('.garr').textContent=GOPEN[it.g.key]?'▸':'▾';
+  el.querySelector('b').textContent=it.g.zh;
+  el.querySelector('.gcnt').textContent=it.members.length+' 个';
+}
+function groupedItems(files){
+  const out=[];
+  for(const g of GROUPS){
+    const members=files.filter(f=>g.m(f.status));
+    if(!members.length) continue;
+    out.push({t:'h',g,members});
+    if(!GOPEN[g.key]) members.forEach(f=>out.push({t:'r',f}));
+  }
+  return out;
+}
+
+/* ================= 标签页 ================= */
+function show(m){
+  const on={send:m==='send',recv:m==='recv',mon:m==='mon'};
+  $('tabSend').className=on.send?'on':''; $('tabRecv').className=on.recv?'on':''; $('tabMon').className=on.mon?'on':'';
+  $('sendWrap').className=on.send?'':'hide'; $('recvWrap').className=on.recv?'':'hide'; $('monWrap').className=on.mon?'':'hide';
+  if(on.mon) monitorFromSend();
+}
+
+/* ================= 接收方 ================= */
+let stateFiles=[], prevAllDone=false, RECV_PW='', RECV_WAS_CONN=false;
+const RECV_ELS=new Map();
+
+let folderPickerBusy=false;
+async function requestFolder(messageId,kind='folder'){
+  if(folderPickerBusy) return {};
+  folderPickerBusy=true;
+  const label=kind==='file'?'文件':'文件夹';
+  const buttons=Array.from(document.querySelectorAll('button[data-picker]'));
+  const states=buttons.map(button=>({button,text:button.textContent,disabled:button.disabled}));
+  states.forEach(({button})=>{button.disabled=true;button.textContent='正在选择…';});
+  msg(messageId,'正在打开'+label+'选择窗口，请在运行 FileTransfer 的电脑上选择；若未显示，请检查任务栏。也可手动输入路径。');
+  const controller=new AbortController();
+  const timeout=setTimeout(()=>controller.abort(),130000);
+  try{
+    const response=await managedFetch(kind==='file'?'/api/pick-file':'/api/pick-folder',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}',signal:controller.signal});
+    if(!response.ok) throw new Error('HTTP '+response.status);
+    const result=await response.json();
+    msg(messageId,result.error||'');
+    return result;
+  }catch(error){
+    msg(messageId,error.name==='AbortError'?'选择'+label+'超时，请重试或手动输入路径。':'无法打开'+label+'选择窗口，请确认程序仍在运行，或手动输入路径。');
+    return {};
+  }finally{
+    clearTimeout(timeout);
+    folderPickerBusy=false;
+    states.forEach(({button,text,disabled})=>{button.disabled=disabled;button.textContent=text;});
+  }
+}
+async function pick(id){
+  const r=await requestFolder('recvMsg');
+  if(r.path) $(id).value=r.path; else if(r.error) msg('recvMsg',r.error);
+}
+async function startRecv(){
+ const btn=$('btnRecvSave'); btn.disabled=true;
+ try{
+  const password=$('recvPw').value;
+  const result=await post('receive-config',{dest:$('recvDest').value.trim(),password,policy:$('recvPolicy').value});
+  if(!result.ok){ msg('recvMsg',result.error||'配置失败'); return; }
+  RECV_PW=password;
+  $('recvUrl').textContent=result.my_url;
+  $('recvPwShow').textContent=password;
+  $('recvDest').value=result.dest||'';
+  $('recvHint').textContent='设置已保存，文件将存到 '+(result.dest||'');
+  localStorage.setItem('ft_recv','1');
+  $('recvCfg').className='hide'; $('recvMain').className='';
+  msg('recvMsg',''); pollStart('recv',recvTick,1000); await loadLog();
+ }catch(error){ msg('recvMsg',error.message||'无法连接本机服务'); }
+ finally{ btn.disabled=false; }
+}
+function reopenRecvCfg(){ $('recvCfg').className='card'; window.scrollTo({top:0,behavior:'smooth'}); }
+async function ctl(act,path){ await post(act,{path:path||''}); recvTick(); }
+function wireCtl(container){
+  container.addEventListener('click',async e=>{
+    const cp=e.target.closest('button.cp');
+    if(cp){ const row=cp.closest('.frow'); if(row) copyText(row.getAttribute('data-path')||'','路径已复制'); return; }
+    const b=e.target.closest('button[data-act]');
+    if(!b) return;
+    const row=b.closest('.frow');
+    b.disabled=true;
+    try{ await ctl(b.dataset.act, row? row.getAttribute('data-control-path')||'' : ''); }catch(error){ toast(error.message||'操作失败','err'); }finally{ b.disabled=false; }
+  });
+}
+function renderArchive(id,state){
+  const archives=state.archives||(state.archive?[state.archive]:[]);
+  const element=$(id);
+  if(!archives.length){ element.className='hide'; return; }
+  const failed=archives.find(archive=>archive.status==='error');
+  const complete=archives.every(archive=>archive.status==='done');
+  const total=archives.reduce((sum,archive)=>sum+(Number(archive.total_files)||0),0);
+  const done=archives.reduce((sum,archive)=>sum+(Number(archive.done_files)||0),0);
+  element.className=failed?'banner err':complete?'banner ok':'banner info';
+  element.textContent=failed?'⚠ 解压失败：'+(failed.error||'请重试任务'):complete?'📦 解压完成，共 '+done+' 个文件':'📦 压缩包任务：已解压 '+done+' / '+total+' 个文件';
+}
+async function recvTick(){
+  let s;
+  try{ s=await post('state'); }catch(error){ $('recvOffline').className='banner err'; $('recvOffline').textContent=error.message||'与服务连接中断，正在重试…'; return; }
+  if(s.connected) RECV_WAS_CONN=true; // 曾在传/曾连上：之后断开才提示
+  $('recvOffline').className= (RECV_WAS_CONN && s.connected===false)? 'banner err':'hide';
+  if(!s.connected){ if(!RECV_WAS_CONN) $('recvOverview').innerHTML=overview({pct:0,doneText:'等待对方发送',stats:[{v:'0 / 0',l:'任务 完成/总数'}]}); return; }
+  const p=s.all_done?100:pct(s.done_bytes,s.total_bytes);
+  const eta=(s.speed>0 && s.total_bytes>s.done_bytes)? (s.total_bytes-s.done_bytes)/s.speed : null;
+  pushSpeed('recv',s.speed||0);
+  $('recvOverview').innerHTML=overview({
+    pct:p, doneText:fmt(s.done_bytes)+' / '+fmt(s.total_bytes)+' · 待传 '+(s.pending||0)+' 传输中 '+(s.active||0),
+    stats:[
+      {v:fmt(s.speed)+'/s', l:'速度(3秒均)'},
+      {v:fmtDur(eta), l:'预计剩余'},
+      {v:s.elapsed===0?'0 秒':fmtDur(s.elapsed), l:'已用时'},
+      {v:(s.done||0)+' / '+(s.total||0), l:'文件 完成/总数'}
+    ], hist:'recv'});
+  renderArchive('recvArchiveBanner',s);
+  stateFiles=s.files||[];
+  $('recvEmpty').className=stateFiles.length?'hide':'';
+  const items=groupedItems(stateFiles);
+  diffList($('recvFiles'),items,
+    it=> it.t==='h'? 'h:'+it.g.key : 'f:'+(it.f.id||it.f.path),
+    it=> it.t==='h'? buildHdr(it) : buildRow(),
+    (el,it)=>{ if(it.t==='h') updHdr(el,it); else updRow(el,{f:it.f,eta:fileEta(it.f.path,it.f.size,it.f.bytes_done),btns:ctlBtns(it.f)}); },
+    RECV_ELS);
+  const doneNotify = s.all_done && !prevAllDone && stateFiles.length;
+  if(doneNotify) notifyDone(stateFiles.length);
+  prevAllDone=!!s.all_done;
+}
+function renderRecvFiles(){ // 分组折叠后重渲染（不重新拉数据）
+  $('recvEmpty').className=stateFiles.length?'hide':'';
+  const items=groupedItems(stateFiles);
+  diffList($('recvFiles'),items,
+    it=> it.t==='h'? 'h:'+it.g.key : 'f:'+(it.f.id||it.f.path),
+    it=> it.t==='h'? buildHdr(it) : buildRow(),
+    (el,it)=>{ if(it.t==='h') updHdr(el,it); else updRow(el,{f:it.f,eta:null,btns:ctlBtns(it.f)}); },
+    RECV_ELS);
+}
+function copyConn(){
+  const url=$('recvUrl').textContent||'';
+  if(!RECV_PW){ toast('请先设置接收密码','err'); return; }
+  const s='接收地址 '+url+' 密码: '+RECV_PW;
+  copyText(s,'连接信息已复制，去「发送文件」粘贴即可');
+}
+
+/* 传输完成：浏览器通知 + 提示音（手机端同样有效） */
+function notifyDone(n){
+  try{ if(window.Notification && Notification.permission==='granted'){ new Notification('FileTransfer 传输完成',{body:n+' 个文件已接收完成'}); } }catch(e){}
+  try{
+    const ac=new (window.AudioContext||window.webkitAudioContext)();
+    const o=ac.createOscillator(), g=ac.createGain();
+    o.connect(g); g.connect(ac.destination); o.type='sine'; o.frequency.value=880; g.gain.value=0.06; o.start();
+    setTimeout(()=>{ o.stop(); try{ac.close();}catch(e){} },220);
+  }catch(e){}
+}
+
+/* ================= 工具 / 日志（结构化） ================= */
+async function openFolder(){
+  const r=await post('open-folder',{});
+  if(r.ok===false) toast(r.error||'打开失败','err'); else toast('已打开目录','ok');
+}
+async function cleanCache(){
+  const r=await post('clean-cache',{});
+  if(r.ok===false) toast(r.error||'清理失败','err');
+  else toast(r.removed? '已清理 '+r.removed+' 个临时文件':'没有需要清理的临时文件','ok');
+}
+let LAST_LOG=[];
+async function loadLog(){
+  const r=await post('log',{});
+  LAST_LOG=r.log||[];
+  renderLog();
+}
+function renderLog(){
+  const f=$('logFilter').value;
+  const html=LAST_LOG.slice(0,60).map(line=>{
+    let e=null, raw=null;
+    try{ e=JSON.parse(line); }catch(err){ raw=line; }
+    if(e){
+      const ok=e.result==='done';
+      if(f==='ok'&&!ok) return null; if(f==='err'&&ok) return null;
+      const t=(e.time||'').replace('T',' ').slice(0,19);
+      return '<div class="ll '+(ok?'ok':'err')+'"><span class="lt">'+esc(t)+'</span> '+esc(e.path||'')+
+        ' · '+fmt(e.size)+(e.took? ' · '+esc(e.took):'')+' '+(ok?'✓':'✗'+(e.error? ' · '+esc(e.error):''))+'</div>';
+    }
+    if(f!=='all') return null;
+    return '<div class="ll"><span class="lt">—</span> '+esc(raw||'')+'</div>';
+  }).filter(Boolean).join('') || '（暂无传输记录）';
+  $('recvLog').innerHTML=html;
+}
+
+/* ================= 发送方 ================= */
+let sendRoots=[], PUSH_META={url:'',total:0}, PUSH_TOTAL=0, PUSH_BYTES=0, PUSH_COMPRESSED=false, SEND_TOKEN='';
+const SEND_ACT_ELS=new Map(), SEND_TREE_ELS=new Map();
+let PREP_STATE=null, PUSH_PENDING=false, PREP_PREVIOUS_ID='', PREP_HANDLED_ID='';
+
+function setPrepareButtons(){
+ const busy=PUSH_PENDING||!!(PREP_STATE&&PREP_STATE.active);
+ for(const id of ['btnPush','btnPushMore']){
+  const button=$(id); if(!button) continue;
+  button.disabled=busy;
+  button.textContent=busy?'正在准备，请稍候…':id==='btnPush'?'📤 发送到对方':'再发送到对方';
+ }
+}
+function renderPreparation(state){
+ const card=$('sendPreparation');
+ if(!state||state.stage==='idle'){ card.className='card hide'; return; }
+ card.className='card';
+ const labels={starting:'正在提交请求',scanning:'扫描文件',compressing:'正在压缩',finalizing:'写入压缩包',verifying:'校验压缩包',connecting:'准备上传',ready:'已加入传输',error:'准备失败'};
+ $('prepareTitle').textContent=state.compressed?'📦 打包压缩进度':'📤 发送准备进度';
+ $('prepareStage').textContent=labels[state.stage]||'准备中';
+ $('prepareStage').className='bd '+(state.stage==='error'?'err':state.stage==='ready'?'ok':'run');
+ const verifying=state.stage==='verifying';
+ const determinate=verifying||state.stage==='compressing'||(state.compressed&&['finalizing','connecting','ready'].includes(state.stage));
+ const percent=verifying?pct(state.verify_bytes,state.zip_bytes):state.total_bytes>0?pct(state.done_bytes,state.total_bytes):pct(state.done_files,state.total_files);
+ $('prepareDetail').textContent=verifying?'正在读取压缩包并校验完整性':state.stage==='scanning'?'正在统计文件数量和原始大小':state.compressed?'压缩进度按已处理的原始字节计算':'扫描完成后逐文件校验并加入上传队列';
+ $('preparePercent').textContent=determinate?percent.toFixed(1)+'%':state.stage==='error'?'未完成':state.stage==='ready'?'已就绪':'请稍候';
+ const bar=$('prepareBar'); bar.className='bigbar'+(!determinate&&state.active?' pending':'');
+ bar.querySelector('i').style.width=(determinate?percent:0)+'%';
+ if(determinate) bar.setAttribute('aria-valuenow',percent.toFixed(1)); else bar.removeAttribute('aria-valuenow');
+ $('prepareFiles').textContent=state.compressed?(state.done_files||0)+' / '+(state.total_files||0):String(state.total_files||0);
+ $('prepareBytes').textContent=state.compressed?fmt(state.done_bytes||0)+' / '+fmt(state.total_bytes||0):fmt(state.total_bytes||0);
+ $('prepareFilesLabel').textContent=state.compressed?'已压缩 / 总文件数':'已扫描文件';
+ $('prepareBytesLabel').textContent=state.compressed?'已处理 / 原始大小':'原始大小';
+ $('prepareElapsed').textContent=state.elapsed>=1?fmtDur(state.elapsed):'不足 1 秒';
+ $('prepareCurrent').textContent=state.stage==='ready'?'准备已完成，实际传输和解压结果请查看下方进度。':state.current||(state.stage==='error'?'本次准备已停止，可修正后再次发送。':'等待本机开始处理…');
+ $('prepareCurrent').title=state.current||'';
+ $('prepareNote').textContent=state.error||((state.zip_bytes?'压缩包大小 '+fmt(state.zip_bytes)+'。':'')+(state.stage==='ready'?'准备完成不代表传输完成。':state.compressed?'先打包、校验，再传输；100% 压缩不代表文件已送达。':'无需等待整个文件夹打包，文件会逐个加入传输。'));
+ $('prepareNote').className='prepare-note'+(state.error?' prepare-error':'');
+}
+async function prepareTick(restoring=false){
+ try{
+  const state=await post('prepare-state');
+  if(!state.stage) throw new Error(state.error||'准备进度响应无效');
+  $('preparePollError').textContent='';
+  if(PUSH_PENDING&&(state.stage==='idle'||state.id===PREP_PREVIOUS_ID)) return;
+  PREP_STATE=state; renderPreparation(state); setPrepareButtons();
+  if(restoring&&state.active){
+   show('send'); $('sendUrl').value=state.remote||''; $('compressOn').checked=!!state.compressed;
+  }
+  if(state.stage==='ready'&&!PUSH_PENDING&&state.id!==PREP_HANDLED_ID){
+   PREP_HANDLED_ID=state.id;
+   PUSH_META={url:state.remote,total:state.total_bytes}; PUSH_COMPRESSED=!!state.compressed; window.__compress=PUSH_COMPRESSED;
+   if($('sendMain').classList.contains('hide')) buildBanner(true);
+   pollStart('send',sendTick,1000);
+  }
+ }catch(error){ $('preparePollError').textContent='无法读取准备进度，正在重试；后台任务可能仍在进行。'+(error.message||''); }
+}
+function beginPrepareUI(compressed){
+ PUSH_PENDING=true; PREP_PREVIOUS_ID=PREP_STATE&&PREP_STATE.id||'';
+ $('preparePollError').textContent='';
+ renderPreparation({stage:'starting',active:true,compressed}); setPrepareButtons();
+ $('sendPreparation').scrollIntoView({block:'start',behavior:'smooth'});
+}
+
+function addPathList(p,kind){
+  if(sendRoots.some(x=>x.path===p)){ msg('sendMsg','该路径已在列表中'); return; }
+  sendRoots.push({path:p,kind}); renderSendFolders();
+}
+function addFolderMan(){
+  const v=$('sendFolder').value.trim();
+  if(!v) return msg('sendMsg','请输入文件或文件夹路径');
+  addPathList(v);
+  $('sendFolder').value='';
+}
+function rmSendFolder(i){ sendRoots.splice(i,1); renderSendFolders(); }
+function renderSendFolders(){
+  $('sendFolders').innerHTML = sendRoots.length
+    ? sendRoots.map((x,i)=>'<div class="trow"><span class="bd wait">'+(x.kind==='file'?'文件':x.kind==='folder'?'文件夹':'路径')+'</span><span class="selection-info" title="'+esc(x.path)+'"><span class="tname">'+esc(x.path.split(/[\\/]/).filter(Boolean).pop()||x.path)+'</span><span class="selection-path">'+esc(x.path)+'</span></span><button class="tiny danger" onclick="rmSendFolder('+i+')">移除</button></div>').join('')
+    : '<p class="mut">尚未添加文件或文件夹</p>';
+}
+async function pickSend(kind='folder'){
+  const r=await requestFolder('sendMsg',kind);
+  if(r.path) addPathList(r.path,kind); else if(r.error) msg('sendMsg',r.error);
+}
+async function pickSend2(kind='folder'){
+  const r=await requestFolder('sendMoreMsg',kind);
+  if(r.path) $('sendFolder2').value=r.path;
+  else if(r.error){ const m=$('sendMoreMsg'); if(m) m.textContent=r.error; }
+}
+function buildBanner(fromRefresh){
+  $('sendBanner').innerHTML=
+    '<div class="cardhead"><b>'+(fromRefresh?'已连接接收方（进度已恢复）':'已连接接收方')+'</b>'+
+    '<span class="acts"><a onclick="reopenSendCfg()">重新配置</a></span></div>'+
+    '<div class="connbox">'+esc(PUSH_META.url)+'</div>'+
+    '<p class="mut">本机主动上传，接收服务器无需回连。'+(PUSH_COMPRESSED?'📦 压缩模式，以接收端校验与解压结果为准。':'')+(fromRefresh? '进度已恢复，可继续追加文件或文件夹。':'可在下面继续追加文件或文件夹。')+'</p>'+ 
+    '<input id="sendFolder2" placeholder="追加文件或文件夹路径…">'+
+    '<div class="pick-actions"><button class="ghost" data-picker onclick="pickSend2(\'folder\')">🗂 选择文件夹…</button><button class="ghost" data-picker onclick="pickSend2(\'file\')">📄 选择文件…</button></div>'+
+    '<div class="row2"><button id="btnPushMore" class="mini" style="margin-left:0" onclick="pushMore()">再发送到对方</button><p class="mut" id="sendMoreMsg" style="margin:0 0 0 10px"></p></div>';
+  $('sendMain').className='';
+  if(fromRefresh) $('sendCfg').className='card'; else $('sendCfg').className='hide'; // 恢复模式：配置区可见，不再死胡同
+}
+function reopenSendCfg(){ $('sendCfg').className='card'; window.scrollTo({top:0,behavior:'smooth'}); }
+async function startPush(){
+ if(PUSH_PENDING||(PREP_STATE&&PREP_STATE.active)) return;
+ if(!sendRoots.length){ msg('sendMsg','请先选择要发送的文件或文件夹'); return; }
+ const url=$('sendUrl').value.trim(), password=$('sendPw').value;
+ if(!url||!password){ msg('sendMsg','请填写接收方地址和密码'); return; }
+ const compress=$('compressOn').checked;
+ window.__compress=compress;
+ beginPrepareUI(compress);
+ try{
+  const result=await post('push',{remote_url:url,remote_password:password,paths:sendRoots.map(item=>item.path),compress});
+  if(!result.ok){ msg('sendMsg',result.error||'发送失败'); return; }
+  SEND_TOKEN=result.token; PUSH_META={url,total:result.total_bytes||0};
+  PUSH_TOTAL=result.count||0; PUSH_BYTES=result.total_bytes||0; PUSH_COMPRESSED=!!result.compressed;
+  localStorage.setItem('ft_token',SEND_TOKEN); localStorage.setItem('ft_sendurl',url);
+  localStorage.setItem('ft_ptotal',PUSH_TOTAL); localStorage.setItem('ft_pbytes',PUSH_BYTES); localStorage.setItem('ft_pcomp',PUSH_COMPRESSED?'1':'0');
+  sessionStorage.setItem('ft_sendpw',password);
+  msg('sendMsg',''); toast('接收方已接受任务，等待接收端校验完成','ok');
+  buildBanner(false); pollStart('send',sendTick,1000);
+ }catch(error){ msg('sendMsg',error.message||'无法连接本机服务'); }
+ finally{ PUSH_PENDING=false; await prepareTick(); setPrepareButtons(); }
+}
+async function pushMore(){
+ if(PUSH_PENDING||(PREP_STATE&&PREP_STATE.active)) return;
+ const path=$('sendFolder2').value.trim();
+ if(!path){ $('sendMoreMsg').textContent='请输入路径'; return; }
+ beginPrepareUI(window.__compress!==false);
+ try{
+  const password=$('sendPw').value||sessionStorage.getItem('ft_sendpw')||'';
+  const result=await post('push',{remote_url:PUSH_META.url,remote_password:password,paths:[path],compress:window.__compress!==false});
+  $('sendMoreMsg').textContent=result.ok?'已追加 '+result.count+' 个文件':result.error||'发送失败';
+  if(result.ok){ PUSH_TOTAL=result.count||0; PUSH_BYTES=result.total_bytes||0; PUSH_META.total=PUSH_BYTES; PUSH_COMPRESSED=!!result.compressed;
+   localStorage.setItem('ft_ptotal',PUSH_TOTAL); localStorage.setItem('ft_pbytes',PUSH_BYTES); localStorage.setItem('ft_pcomp',PUSH_COMPRESSED?'1':'0');
+   $('sendFolder2').value=''; pollStart('send',sendTick,1000); toast('追加任务已入队，原任务继续保留','ok'); }
+ }catch(error){ $('sendMoreMsg').textContent=error.message||'请求失败'; }
+ finally{ PUSH_PENDING=false; await prepareTick(); setPrepareButtons(); }
+}
+async function testPush(){
+  const url=$('sendUrl').value.trim(), pw=$('sendPw').value;
+  if(!url||!pw){ msg('sendMsg','请先填写接收方地址和密码'); return; }
+  msg('sendMsg','🧪 正在测试连接…');
+  try{
+  const r=await post('push-test',{remote_url:url,remote_password:pw});
+  if(r.ok){
+    msg('sendMsg','✅ 连接成功：测试文件已入队，请在接收端确认完成。');
+    toast('连接正常，链路可用','ok');
+  } else {
+    msg('sendMsg','❌ 测试失败：'+(r.error||'未知错误'));
+    toast('连接测试失败','err');
+  }
+  }catch(error){ msg('sendMsg','❌ 测试失败：'+(error.message||'网络异常')); }
+}
+function renderSendAct(files){
+ const active=files.filter(file=>['pending','active','verifying','finalizing','extracting','error'].includes(file.status));
+ $('sendIdle').className=active.length?'hide':'';
+ $('sendActCnt').textContent=active.length?active.length+' 个任务正在传输':'';
+ diffList($('sendActive'),active,file=>file.id||file.path,()=>buildRow(),(element,file)=>updRow(element,{f:file,eta:fileEta(file.id||file.path,file.size,file.bytes_done),btns:badge(file.status)}),SEND_ACT_ELS);
+}
+async function sendTick(){
+ try{
+  const state=await post('send-state');
+  if(!state.connected||state.error){ $('sendOffline').className='banner err'; $('sendOffline').textContent=state.error||'尚未恢复与接收方的连接，请重新发送任务。'; return; }
+  $('sendOffline').className='hide';
+  const total=state.total_bytes||0, done=state.done_bytes||0, speed=state.speed||0;
+  const remaining=speed>0&&total>done?(total-done)/speed:null;
+  pushSpeed('send',speed);
+  $('sendOverview').innerHTML=overview({pct:state.all_done?100:pct(done,total),doneText:fmt(done)+' / '+fmt(total)+' · '+(state.all_done?'接收服务器已处理完成':'主动上传，以接收端实际完成量为准'),stats:[
+   {v:(state.done||0)+' / '+(state.total||0),l:'任务 完成/总数'},
+   {v:fmt(speed)+'/s',l:'接收速度'},
+   {v:state.all_done?'已完成':fmtDur(remaining),l:'预计剩余'},
+   {v:state.elapsed===0?'0 秒':fmtDur(state.elapsed),l:'已用时'}],hist:'send'});
+  const files=state.files||[];
+  renderSendAct(files);
+  $('sendFcnt').textContent=files.length+' 个传输任务';
+  diffList($('sendTree'),files.slice(0,500),file=>file.id||file.path,()=>buildRow(),(element,file)=>updRow(element,{f:file,eta:null,btns:badge(file.status)}),SEND_TREE_ELS);
+ }catch(error){ $('sendOffline').className='banner err'; $('sendOffline').textContent=error.message||'与服务连接中断，正在重试…'; }
+}
+function disconnectSend(){
+  $('sendOffline').textContent='⚠ 与接收方连接已断开（token 失效或对方重启）。请「重新配置」后再次发送。';
+  $('sendOffline').className='banner err';
+  $('sendCfg').className=''; // 自动重新露出配置区，不再死胡同
+  pollStop('send'); // 断连后停止轮询，避免每秒无效请求；重新发送时会自动恢复
+  toast('与接收方连接已断开，请重新配置','err');
+}
+
+/* ================= 查看进度（对方发送端/接收端） ================= */
+const MON_ELS=new Map(), MON_TREE_ELS=new Map();
+let MON_TARGET=null, MON_BUSY=false;
+function editMonitor(){
+  pollStop('mon'); MON_TARGET=null;
+  $('monCfg').className='card'; $('monMain').className='hide';
+}
+function monitorFromSend(){
+  const url=$('sendUrl').value.trim(), password=$('sendPw').value;
+  if(url||password){
+    $('monUrl').value=url; $('monPw').value=password;
+    if(url&&password){ monitor(); return; }
+    editMonitor(); msg('monMsg','已复用发送配置，请补齐接收地址和密码。');
+  }
+}
+async function monitor(){
+  if(MON_BUSY) return;
+  const target={url:$('monUrl').value.trim(),password:$('monPw').value};
+  if(!target.url||!target.password){ editMonitor(); msg('monMsg','请填写接收地址和密码。'); return; }
+  if(MON_TARGET&&MON_TARGET.url===target.url&&MON_TARGET.password===target.password){
+    $('monCfg').className='hide'; $('monMain').className='';
+    pollStart('mon',monTick,1000); return;
+  }
+  editMonitor(); MON_BUSY=true; $('btnMonitor').disabled=true;
+  msg('monMsg','正在连接 '+target.url+' …');
+  try{
+    const r=await post('monitor',target);
+    if(target.url!==$('monUrl').value.trim()||target.password!==$('monPw').value) return;
+    if(!r.ok){ msg('monMsg', r.error||'查看失败'); return; }
+    MON_TARGET=target; HIST.mon.length=0;
+    $('monCfg').className='hide'; $('monMain').className='';
+    $('monTargetUrl').textContent=target.url;
+    $('monOverview').textContent='正在读取进度…';
+    $('monFiles').replaceChildren(); MON_ELS.clear();
+    $('monTree').replaceChildren(); MON_TREE_ELS.clear();
+    $('monArchiveBanner').className='hide'; $('monTreeCard').className='hide';
+    msg('monMsg',''); $('monName').textContent='对方：'+(r.name||'?');
+    pollStart('mon',monTick,1000);
+  }catch(error){ msg('monMsg',error.message||'连接失败'); }
+  finally{
+    MON_BUSY=false; $('btnMonitor').disabled=false;
+    if(target.url!==$('monUrl').value.trim()||target.password!==$('monPw').value) monitor();
+  }
+}
+async function monTick(){
+  const target=MON_TARGET;
+  if(!target) return;
+  let s;
+  try{ s=await post('monitor-state'); }catch(e){ if(target===MON_TARGET) $('monOffline').className='banner err'; return; }
+  if(target!==MON_TARGET) return;
+  const disconnected=!s.connected||s.error||(s.state&&s.state.error);
+  $('monOffline').className=disconnected?'banner err':'hide';
+  if(disconnected) return;
+  if(s.state){
+    const st=s.state||{}, fs=st.files||[];
+    $('monName').textContent='对方：'+(s.role==='receiver'?'接收端':'发送端')+(st.dest? ' · 存入 '+st.dest:'');
+    $('monCnt').textContent=(st.done||0)+' / '+(st.total||0)+' 个文件';
+    const p=st.all_done?100:pct(st.done_bytes,st.total_bytes);
+    const eta=(st.speed>0 && st.total_bytes>st.done_bytes)? (st.total_bytes-st.done_bytes)/st.speed:null;
+    pushSpeed('mon',st.speed||0);
+    $('monOverview').innerHTML=overview({
+      pct:p, doneText:fmt(st.done_bytes)+' / '+fmt(st.total_bytes)+' · 待传 '+(st.pending||0)+' 传输中 '+(st.active||0),
+      stats:[
+        {v:fmt(st.speed)+'/s', l:'速度(3秒均)'},
+        {v:fmtDur(eta), l:'预计剩余'},
+        {v:st.elapsed===0?'0 秒':fmtDur(st.elapsed), l:'已用时'},
+        {v:(st.done||0)+' / '+(st.total||0), l:'文件 完成/总数'}
+      ], hist:'mon'});
+    $('monIdle').className=fs.length?'hide':'';
+    $('monTreeCard').className='hide';
+    renderArchive('monArchiveBanner',st);
+    const items=groupedItems(fs);
+    diffList($('monFiles'),items,
+      it=> it.t==='h'? 'h:'+it.g.key : 'f:'+(it.f.id||it.f.path),
+      it=> it.t==='h'? buildHdr(it,monTick) : buildRow(),
+      (el,it)=>{ if(it.t==='h') updHdr(el,it); else updRow(el,{f:it.f,eta:null,btns:''}); },
+      MON_ELS);
+    return;
+  }
+  // 对方是发送端
+  const st=s.stats||{};
+  const raw=st.raw_bytes||0, wire=st.wire_bytes||0, saved=st.compressed_saved||0, spd=st.speed||0;
+  pushSpeed('mon',spd);
+  $('monName').textContent='对方：发送端';
+  $('monOverview').innerHTML=overview({
+    pct:0,
+    doneText:'仅发送流量，接收完成状态未知 · '+fmt(raw),
+    stats:[
+      {v:fmt(spd)+'/s', l:'当前速度'},
+      {v:fmt(raw), l:'已发送'},
+      {v:saved>0? '节省 '+fmt(saved):(st.ratio? st.ratio.toFixed(2)+'x':'—'), l:'压缩节省'},
+      {v:fmtDur(st.uptime), l:'已用时'}
+    ], hist:'mon'});
+  $('monArchiveBanner').className='hide';
+  const keys=Object.keys(st.active||{});
+  $('monIdle').className=keys.length?'hide':'';
+  $('monCnt').textContent=keys.length? (keys.length+' 个文件正在传输'):'';
+  diffList($('monFiles'),keys, p=>'p:'+p,
+    ()=>buildRow(),
+    (el,p)=>{ const it=st.active[p]; updRow(el,{f:{path:p,size:it.total,bytes_done:it.done,status:'active'},eta:fileEta(p,it.total,it.done),btns:''}); },
+    MON_ELS);
+  $('monTreeCard').className='';
+  const files=(s.files||[]).slice(0,500);
+  $('monFcnt').textContent=(s.files||[]).length+' 个文件';
+  diffList($('monTree'),files,f=>f.path,
+    f=>{ const d=document.createElement('div'); d.className='trow'; d.innerHTML='<span class="tname"></span><i class="flex"></i><span class="tsize"></span>'; return d; },
+    (el,f)=>{ const t=treeOf(f.path); el.querySelector('.tname').textContent=t.name; el.querySelector('.tname').title=f.path;
+      el.querySelector('.tname').style.paddingLeft=(t.depth*16)+'px'; el.querySelector('.tsize').textContent=fmt(f.size); },
+    MON_TREE_ELS);
+}
+
+/* ================= 粘贴识别（发送端） ================= */
+function parseConn(s){
+  const url=(s.match(/https?:\/\/[^\s，,]+/)||[])[0]||'';
+  let pw=(s.match(/密码[:：]\s*(\S+)/)||[])[1]||'';
+  if(!pw) pw=(s.match(/pw[:：]\s*(\S+)/i)||[])[1]||'';
+  return {url,pw};
+}
+function parsePaste(){
+  const v=$('sendPaste').value.trim();
+  if(!v){ msg('sendMsg','请先把对方发的连接信息粘贴到上方输入框'); return; }
+  const c=parseConn(v);
+  if(!c.url){ msg('sendMsg','没识别出网址，请确认格式是「接收地址 http://… 密码: …」'); return; }
+  $('sendUrl').value=c.url;
+  if(c.pw) $('sendPw').value=c.pw;
+  $('sendPaste').value='';
+  msg('sendMsg','✅ 已识别：地址 '+c.url+(c.pw? '，密码已填入':'（字符串里没带密码，请手动填）'));
+}
+
+/* ================= 初始化 / 恢复（修复「已连接接收方」死胡同） ================= */
+async function initApp(){
+ const session=await (await managedFetch('/api/session')).json();
+ $('foot').textContent='FileTransfer v'+(session.ver||'?')+' · 默认监听全部网卡';
+ if(!session.authorized){ lockAdmin(ADMIN_KEY?'管理密码错误，请重新输入。':'请输入本机管理密码。'); return; }
+ sessionStorage.setItem('ft_admin',ADMIN_KEY); $('adminKey').value='';
+ $('adminPanel').className='hide'; $('workspace').className='';
+ const info=await (await managedFetch('/api/info')).json();
+ $('recvDest').value=info.receiver_dest||info.default_dest||'';
+ $('recvPolicy').value=info.receiver_policy||'rename';
+ $('sendUrl').value=localStorage.getItem('ft_sendurl')||'';
+ $('sendPw').value=sessionStorage.getItem('ft_sendpw')||'';
+ renderSendFolders();
+ if(info.receiver){
+  show('recv'); $('recvCfg').className='hide'; $('recvMain').className='';
+  RECV_PW=info.receiver_password||'';
+  $('recvUrl').textContent=info.my_url||''; $('recvPwShow').textContent=RECV_PW||'请在重新配置中设置接收密码';
+  $('recvPw').value=RECV_PW; $('copyConn').disabled=!RECV_PW;
+  $('recvHint').textContent='文件自动存到 '+(info.receiver_dest||'');
+  pollStart('recv',recvTick,1000); await loadLog();
+ }else if(info.outgoing){
+  show('send'); SEND_TOKEN=localStorage.getItem('ft_token')||'';
+  PUSH_META.url=localStorage.getItem('ft_sendurl')||''; PUSH_META.total=+localStorage.getItem('ft_pbytes')||0;
+  PUSH_TOTAL=+localStorage.getItem('ft_ptotal')||0; PUSH_BYTES=PUSH_META.total; PUSH_COMPRESSED=localStorage.getItem('ft_pcomp')!=='0';
+  window.__compress=PUSH_COMPRESSED; $('compressOn').checked=PUSH_COMPRESSED;
+  buildBanner(true); pollStart('send',sendTick,1000);
+ }else{ show('recv'); }
+ await prepareTick(true);
+ pollStart('prepare',prepareTick,750);
+}
+initApp().catch(error=>lockAdmin(error.message||'本机服务不可用'));
+$('sendPaste').addEventListener('paste', ()=>{ setTimeout(parsePaste, 60); });
+wireCtl($('recvFiles'));
+</script>
+</body>
+</html>

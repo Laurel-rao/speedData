@@ -1,0 +1,15 @@
+.DS_Store
+*.log
+.filetransfer-cache/
+.ft-jobs.json
+dist/*.sha256
+
+# Local build outputs
+filetransfer
+filetransfer.exe
+filetransfer-arm64.exe
+
+# IDE files
+.idea/
+.vscode/
+
